@@ -1,26 +1,127 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "tw-animate-css";
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-dm-mono), "SF Mono", monospace;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.5rem;
+
+  /* Toolgenealogy palette */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+
+  --surface: #f7f7f7;
+  --surface-raised: #f0f0f0;
+
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+
+  --primary: #a8501c;
+  --primary-foreground: #ffffff;
+  --primary-hover: #8a3f12;
+  --primary-light: #fdf0e6;
+
+  --secondary: #ffffff;
+  --secondary-foreground: #4a4a4a;
+
+  --muted: #f0f0f0;
+  --muted-foreground: #6b6b6b;
+  --muted-strong: #707070; /* AA-compliant: 4.95:1 on white */
+
+  /* Graphic-only orange (bars, dots, indicators) — NOT for text */
+  --accent: #e87b35;
+  --accent-foreground: #ffffff;
+  --accent-hover: #d06a2a;
+  /* AA-compliant orange for text + button fills */
+  --accent-deep: #a8501c;       /* 5.48:1 on white, 4.91:1 on accent-light */
+  --accent-deep-hover: #8a3f12; /* 7.50:1 on white — hover/active */
+  --accent-light: #fdf0e6;
+
+  --destructive: #c44536;
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #e87b35;
+
+  --track: #d4d4d4;
+  --success: #2a9d5c;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html, body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--foreground);
+    letter-spacing: -0.02em;
+    font-weight: 700;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+  }
+
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted-strong);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .surface-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
 }
