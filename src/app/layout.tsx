@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { DM_Sans, DM_Mono } from "next/font/google";
+import { Outfit, JetBrains_Mono } from "next/font/google";
+import { AppRail } from "@/components/common/AppRail";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["300", "400", "500", "600"],
 });
 
-const dmMono = DM_Mono({
-  variable: "--font-dm-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400", "500"],
 });
@@ -25,11 +26,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${dmSans.variable} ${dmMono.variable} antialiased bg-background text-foreground`}
-      >
-        {children}
+    <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable}`}>
+      <body>
+        <div className="p-3 sm:p-4">
+          <div className="shell mx-auto max-w-[1320px] min-h-[calc(100vh-24px)] sm:min-h-[calc(100vh-32px)]">
+            <AppRail />
+            <main className="tray flex-1 min-w-0 sm:p-6">{children}</main>
+          </div>
+        </div>
       </body>
     </html>
   );

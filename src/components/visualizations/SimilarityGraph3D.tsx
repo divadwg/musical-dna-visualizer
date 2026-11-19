@@ -5,7 +5,18 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Html, Line, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SongDNA, SimilarityDimension, GraphNode, GraphLink } from '@/types/audio-features';
-import { computeGraphData, DIMENSION_COLORS } from '@/services/similarity';
+import { computeGraphData } from '@/services/similarity';
+
+// atlas-3d tokens, repeated here because WebGL materials cannot read CSS variables
+const INK = '#27282a'; // --key
+const FAINT = '#a4a8ae'; // --faint
+const LIME = '#c8f04a'; // --lime
+
+const AXES: { label: string; end: [number, number, number] }[] = [
+  { label: 'Tonal', end: [60, 0, 0] },
+  { label: 'Energy', end: [0, 60, 0] },
+  { label: 'Timbre', end: [0, 0, 60] },
+];
 
 interface SimilarityGraph3DProps {
   songs: SongDNA[];
@@ -29,20 +40,18 @@ export function SimilarityGraph3D({
 
   if (songs.length === 0) {
     return (
-      <div className="h-[600px] bg-muted/30 rounded-lg flex items-center justify-center">
-        <p className="text-muted-foreground">
-          Upload at least 2 songs to see the similarity graph
-        </p>
+      <div className="h-[600px] well !rounded-[20px] flex items-center justify-center">
+        <p className="label">Upload at least 2 songs to see the similarity graph</p>
       </div>
     );
   }
 
   return (
-    <div className="h-[600px] bg-black/90 rounded-lg overflow-hidden relative">
+    <div className="h-[600px] well !rounded-[20px] overflow-hidden relative">
       <Canvas camera={{ position: [0, 0, 300], fov: 60 }}>
-        <ambientLight intensity={0.4} />
-        <pointLight position={[100, 100, 100]} intensity={1} />
-        <pointLight position={[-100, -100, -100]} intensity={0.5} />
+        {/* Light from above, so the nodes read as moulded */}
+        <ambientLight intensity={1.4} />
+        <directionalLight position={[60, 200, 120]} intensity={2.2} />
 
         <Graph
           data={graphData}
@@ -59,27 +68,35 @@ export function SimilarityGraph3D({
           autoRotateSpeed={0.5}
         />
 
-        {/* Axes helper */}
-        <axesHelper args={[50]} />
+        {/* Axes */}
+        {AXES.map((axis) => (
+          <group key={axis.label}>
+            <Line points={[[0, 0, 0], axis.end]} color={FAINT} lineWidth={1} />
+            <Html position={axis.end} center>
+              <span className="label pointer-events-none select-none">{axis.label}</span>
+            </Html>
+          </group>
+        ))}
       </Canvas>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-black/70 p-3 rounded-lg text-xs space-y-1">
-        <p className="text-white/80 font-medium mb-2">Axes</p>
-        <p className="text-red-400">X: Tonal (harmony)</p>
-        <p className="text-green-400">Y: Energy (rhythm + dynamics)</p>
-        <p className="text-blue-400">Z: Timbre (texture)</p>
+      <div className="absolute bottom-4 left-4 flex flex-wrap gap-4 pointer-events-none">
+        <span className="label flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-ink" />
+          Song
+        </span>
+        <span className="label flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-lime shadow-[0_0_0_1px_var(--lime-deep)_inset]" />
+          Selected
+        </span>
+        <span className="label flex items-center gap-1.5">
+          <span className="w-3 h-px bg-ink" />
+          Similar
+        </span>
       </div>
 
-      {/* Dimension legend */}
-      <div className="absolute bottom-4 right-4 bg-black/70 p-3 rounded-lg text-xs space-y-1">
-        <p className="text-white/80 font-medium mb-2">Link Colors</p>
-        {Object.entries(DIMENSION_COLORS).map(([dim, color]) => (
-          <div key={dim} className="flex items-center gap-2">
-            <div className="w-3 h-1 rounded" style={{ backgroundColor: color }} />
-            <span className="text-white/60 capitalize">{dim}</span>
-          </div>
-        ))}
+      <div className="absolute top-4 left-4 pointer-events-none">
+        <span className="status plain capitalize">{dimension} similarity</span>
       </div>
     </div>
   );
@@ -126,9 +143,9 @@ function Graph({ data, selectedId, onSelect }: GraphProps) {
           <Line
             key={idx}
             points={[sourcePos, targetPos]}
-            color={DIMENSION_COLORS[link.dimension]}
-            lineWidth={isConnectedToSelected ? 3 : 1}
-            opacity={isConnectedToSelected ? 0.8 : 0.2}
+            color={INK}
+            lineWidth={isConnectedToSelected ? 1.5 : 1}
+            opacity={isConnectedToSelected ? 0.75 : 0.14}
             transparent
           />
         );
@@ -140,6 +157,7 @@ function Graph({ data, selectedId, onSelect }: GraphProps) {
           key={node.id}
           node={node}
           isSelected={node.id === selectedId}
+          hasSelection={Boolean(selectedId)}
           isConnected={
             selectedId
               ? data.links.some(
@@ -159,23 +177,24 @@ function Graph({ data, selectedId, onSelect }: GraphProps) {
 interface SongNodeProps {
   node: GraphNode;
   isSelected: boolean;
+  hasSelection: boolean;
   isConnected: boolean;
   onSelect: () => void;
 }
 
-function SongNode({ node, isSelected, isConnected, onSelect }: SongNodeProps) {
+function SongNode({ node, isSelected, hasSelection, isConnected, onSelect }: SongNodeProps) {
   const [hovered, setHovered] = useState(false);
   const meshRef = useRef<THREE.Mesh>(null);
 
   // Pulse animation for selected node
   useFrame((state) => {
-    if (meshRef.current && isSelected) {
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.1;
-      meshRef.current.scale.setScalar(scale);
-    }
+    if (!meshRef.current) return;
+    const scale = isSelected ? 1 + Math.sin(state.clock.elapsedTime * 3) * 0.1 : 1;
+    meshRef.current.scale.setScalar(scale);
   });
 
-  const opacity = isSelected ? 1 : isConnected ? 0.9 : hovered ? 0.8 : 0.6;
+  // Ink by default, lime when selected; songs unrelated to the selection fall back to grey
+  const color = isSelected ? LIME : hasSelection && !isConnected && !hovered ? FAINT : INK;
 
   return (
     <group position={[node.x, node.y, node.z]}>
@@ -186,29 +205,16 @@ function SongNode({ node, isSelected, isConnected, onSelect }: SongNodeProps) {
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
-        <meshStandardMaterial
-          color={node.color}
-          transparent
-          opacity={opacity}
-          emissive={isSelected ? node.color : '#000000'}
-          emissiveIntensity={isSelected ? 0.5 : 0}
-        />
+        <meshStandardMaterial color={color} roughness={0.35} metalness={0.05} />
       </Sphere>
-
-      {/* Glow effect for selected */}
-      {isSelected && (
-        <Sphere args={[node.size * 1.5, 16, 16]}>
-          <meshBasicMaterial color={node.color} transparent opacity={0.2} />
-        </Sphere>
-      )}
 
       {/* Label */}
       {(hovered || isSelected) && (
-        <Html center distanceFactor={100}>
-          <div className="bg-black/90 px-3 py-2 rounded-lg text-white text-xs whitespace-nowrap pointer-events-none">
-            <p className="font-medium truncate max-w-[200px]">{node.name}</p>
-            <p className="text-white/60">
-              {node.key} | {Math.round(node.bpm)} BPM
+        <Html center position={[0, node.size + 14, 0]} zIndexRange={[20, 10]}>
+          <div className="key rounded-[12px] px-3 py-2 whitespace-nowrap pointer-events-none">
+            <p className="text-[12px] font-medium truncate max-w-[200px]">{node.name}</p>
+            <p className="label !text-on-key-dim mt-1.5">
+              {node.key} · {Math.round(node.bpm)} BPM
             </p>
           </div>
         </Html>

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { usePlaybackStore } from '@/stores/playback-store';
 import type { SongSegment } from '@/types/audio-features';
+import { formatTime } from '@/lib/theme';
 
 interface EnergyArcProps {
   energyEnvelope: number[];
@@ -10,216 +11,150 @@ interface EnergyArcProps {
   duration: number;
 }
 
-const SEGMENT_COLORS: Record<string, string> = {
-  intro: '#4A90D9',
-  verse: '#50C878',
-  chorus: '#FF7F50',
-  bridge: '#9B59B6',
-  breakdown: '#34495E',
-  outro: '#718093',
-  instrumental: '#F39C12',
-  unknown: '#95A5A6',
-};
+// Dot matrix geometry, in viewBox units
+const W = 800;
+const H = 204;
+const PAD_X = 20;
+const COLS = 64;
+const ROWS = 10;
+const ROW_PITCH = 16;
+const GRID_BOTTOM = 176; // centre of the lowest row
+const COL_PITCH = (W - PAD_X * 2) / COLS;
+const FOOT = 196;
 
 export function EnergyArc({ energyEnvelope, segments, duration }: EnergyArcProps) {
   const { currentTime, seek } = usePlaybackStore();
 
-  // Generate SVG path for smooth curve
-  const { path, gradientStops, width, height } = useMemo(() => {
-    const w = 800;
-    const h = 200;
-    const padding = 20;
-    const graphWidth = w - padding * 2;
-    const graphHeight = h - padding * 2;
+  // Energy per column: values stack as ink dots on a faint grid
+  const dots = useMemo(() => {
+    if (energyEnvelope.length === 0) return null;
 
-    if (energyEnvelope.length === 0) {
-      return { path: '', gradientStops: [], width: w, height: h };
+    const out: React.ReactNode[] = [];
+    for (let c = 0; c < COLS; c++) {
+      const from = Math.floor((c / COLS) * energyEnvelope.length);
+      const to = Math.max(from + 1, Math.floor(((c + 1) / COLS) * energyEnvelope.length));
+      let sum = 0;
+      for (let i = from; i < to; i++) sum += energyEnvelope[i] || 0;
+      const level = Math.round(Math.max(0, Math.min(1, sum / (to - from))) * ROWS);
+
+      const cx = PAD_X + (c + 0.5) * COL_PITCH;
+      for (let r = 0; r < ROWS; r++) {
+        const filled = r < level;
+        out.push(
+          <circle
+            key={`${c}-${r}`}
+            cx={cx}
+            cy={GRID_BOTTOM - r * ROW_PITCH}
+            r={filled ? 3.5 : 1}
+            fill={filled ? 'var(--ink)' : 'var(--faint)'}
+          />
+        );
+      }
     }
-
-    // Downsample if needed
-    const maxPoints = 200;
-    const step = Math.max(1, Math.floor(energyEnvelope.length / maxPoints));
-    const points: { x: number; y: number; energy: number }[] = [];
-
-    for (let i = 0; i < energyEnvelope.length; i += step) {
-      const x = padding + (i / energyEnvelope.length) * graphWidth;
-      const energy = energyEnvelope[i];
-      const y = padding + (1 - energy) * graphHeight;
-      points.push({ x, y, energy });
-    }
-
-    // Create smooth bezier curve
-    let pathData = `M ${points[0].x} ${points[0].y}`;
-
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      const cp1x = prev.x + (curr.x - prev.x) / 3;
-      const cp2x = prev.x + ((curr.x - prev.x) * 2) / 3;
-      pathData += ` C ${cp1x} ${prev.y} ${cp2x} ${curr.y} ${curr.x} ${curr.y}`;
-    }
-
-    // Close path for fill
-    const fillPath =
-      pathData +
-      ` L ${points[points.length - 1].x} ${h - padding} L ${padding} ${h - padding} Z`;
-
-    // Generate gradient stops based on energy
-    const stops = points
-      .filter((_, i) => i % 10 === 0)
-      .map((p, i, arr) => ({
-        offset: (i / (arr.length - 1)) * 100,
-        color: getEnergyColor(p.energy),
-      }));
-
-    return { path: fillPath, gradientStops: stops, width: w, height: h };
+    return out;
   }, [energyEnvelope]);
 
-  // Get segment at current position
   const currentSegment = segments.find(
     (s) => currentTime >= s.start && currentTime < s.end
   );
 
   const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const fraction = x / rect.width;
+    const x = ((e.clientX - rect.left) / rect.width) * W;
+    const fraction = Math.max(0, Math.min(1, (x - PAD_X) / (W - PAD_X * 2)));
     seek(duration * fraction);
   };
 
   if (energyEnvelope.length === 0) {
     return (
-      <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center">
-        <p className="text-muted-foreground">No energy data available</p>
+      <div className="h-64 well flex items-center justify-center">
+        <p className="label">No energy data available</p>
       </div>
     );
   }
 
+  const nowX =
+    PAD_X + (duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0) * (W - PAD_X * 2);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Current segment indicator */}
-      {currentSegment && (
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded"
-            style={{ backgroundColor: SEGMENT_COLORS[currentSegment.label] }}
-          />
-          <span className="text-sm font-medium capitalize">{currentSegment.label}</span>
-          <span className="text-sm text-muted-foreground">
-            Energy: {Math.round(currentSegment.avgEnergy * 100)}%
-          </span>
-        </div>
-      )}
+      <div className="flex items-center gap-3 min-h-[24px]">
+        <span className="tip key">{formatTime(currentTime)}</span>
+        {currentSegment && (
+          <>
+            <span className="status ok capitalize">{currentSegment.label}</span>
+            <span className="label">Energy {Math.round(currentSegment.avgEnergy * 100)}%</span>
+          </>
+        )}
+      </div>
 
-      {/* Energy curve */}
+      {/* Energy dot matrix */}
       <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-64 cursor-pointer"
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full h-auto cursor-pointer"
         onClick={handleClick}
+        role="img"
+        aria-label="Energy over time"
       >
-        <defs>
-          <linearGradient id="energyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            {gradientStops.map((stop, i) => (
-              <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
-            ))}
-          </linearGradient>
-          <linearGradient id="energyFillGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="url(#energyGradient)" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="url(#energyGradient)" stopOpacity="0.1" />
-          </linearGradient>
-        </defs>
-
-        {/* Background grid */}
-        <g className="opacity-20">
-          {[0.25, 0.5, 0.75].map((y) => (
-            <line
-              key={y}
-              x1="20"
-              y1={20 + (1 - y) * 160}
-              x2="780"
-              y2={20 + (1 - y) * 160}
-              stroke="currentColor"
-              strokeDasharray="4 4"
-            />
-          ))}
-        </g>
-
-        {/* Segment backgrounds */}
+        {/* Segment boundaries and labels */}
         {segments.map((segment, idx) => {
-          const x = 20 + (segment.start / duration) * 760;
-          const segWidth = ((segment.end - segment.start) / duration) * 760;
+          const x = PAD_X + (segment.start / duration) * (W - PAD_X * 2);
+          const segWidth = ((segment.end - segment.start) / duration) * (W - PAD_X * 2);
           return (
-            <rect
-              key={idx}
-              x={x}
-              y="20"
-              width={segWidth}
-              height="160"
-              fill={SEGMENT_COLORS[segment.label]}
-              opacity="0.1"
-            />
+            <g key={idx}>
+              {segment.start > 0 && (
+                <line x1={x} y1="0" x2={x} y2={GRID_BOTTOM + 8} stroke="var(--line)" strokeWidth="1" />
+              )}
+              {segWidth > segment.label.length * 7 + 10 && (
+                <text
+                  x={x + 5}
+                  y="9"
+                  fill="var(--muted)"
+                  style={{
+                    font: '500 9px var(--f-mono)',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {segment.label}
+                </text>
+              )}
+            </g>
           );
         })}
 
-        {/* Energy curve fill */}
-        <path d={path} fill="url(#energyFillGradient)" />
+        {dots}
 
-        {/* Energy curve stroke */}
-        <path
-          d={path.replace(/ L [^Z]+Z/, '')}
-          fill="none"
-          stroke="url(#energyGradient)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {/* Playhead */}
-        <line
-          x1={20 + (currentTime / duration) * 760}
-          y1="0"
-          x2={20 + (currentTime / duration) * 760}
-          y2={height}
-          stroke="#f97316"
-          strokeWidth="2"
-        />
-
-        {/* Y-axis labels */}
-        <text x="10" y="25" className="text-xs fill-muted-foreground">
-          High
-        </text>
-        <text x="10" y={height - 15} className="text-xs fill-muted-foreground">
-          Low
-        </text>
+        {/* "Now" line with a lime dot at its foot */}
+        <line x1={nowX} y1="14" x2={nowX} y2={FOOT} stroke="var(--ink)" strokeWidth="1" />
+        <circle cx={nowX} cy={FOOT} r="3.5" fill="var(--lime)" stroke="var(--lime-deep)" strokeWidth="1" />
       </svg>
 
       {/* Time axis */}
-      <div className="relative h-6 mx-5">
+      <div className="relative h-4" style={{ margin: `0 ${(PAD_X / W) * 100}%` }}>
         {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
           <div
             key={fraction}
-            className="absolute text-xs text-muted-foreground"
+            className="label absolute !text-[9px]"
             style={{ left: `${fraction * 100}%`, transform: 'translateX(-50%)' }}
           >
             {formatTime(duration * fraction)}
           </div>
         ))}
       </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 pt-1">
+        <span className="label flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-ink" />
+          Energy, low to high
+        </span>
+        <span className="label flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-lime shadow-[0_0_0_1px_var(--lime-deep)_inset]" />
+          Now
+        </span>
+      </div>
     </div>
   );
-}
-
-function getEnergyColor(energy: number): string {
-  // Low energy: blue, medium: yellow, high: orange/red
-  if (energy < 0.3) return '#3B82F6';
-  if (energy < 0.5) return '#22C55E';
-  if (energy < 0.7) return '#EAB308';
-  if (energy < 0.85) return '#F97316';
-  return '#EF4444';
-}
-
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }

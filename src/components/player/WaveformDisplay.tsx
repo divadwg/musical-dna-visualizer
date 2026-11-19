@@ -3,23 +3,13 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { usePlaybackStore } from '@/stores/playback-store';
 import type { SongSegment } from '@/types/audio-features';
+import { cssVar, formatTime } from '@/lib/theme';
 
 interface WaveformDisplayProps {
   segments?: SongSegment[];
   beats?: number[];
   onSeek?: (time: number) => void;
 }
-
-const SEGMENT_COLORS: Record<string, string> = {
-  intro: '#4A90D9',
-  verse: '#50C878',
-  chorus: '#FF7F50',
-  bridge: '#9B59B6',
-  breakdown: '#34495E',
-  outro: '#718093',
-  instrumental: '#F39C12',
-  unknown: '#95A5A6',
-};
 
 export function WaveformDisplay({ segments = [], beats = [], onSeek }: WaveformDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,67 +60,84 @@ export function WaveformDisplay({ segments = [], beats = [], onSeek }: WaveformD
 
     const width = rect.width;
     const height = rect.height;
-    const barWidth = width / waveformData.length;
+    const ink = cssVar('--ink');
+    const faint = cssVar('--faint');
+    const muted = cssVar('--muted');
+    const line = cssVar('--line');
     const playheadX = duration > 0 ? (currentTime / duration) * width : 0;
 
-    // Clear
+    // Layout: labels on top, the tick strip in the middle, a row of beat dots at the foot
+    const top = 22;
+    const bottom = height - 14;
+    const mid = (top + bottom) / 2;
+    const maxBar = bottom - top;
+
     ctx.clearRect(0, 0, width, height);
 
-    // Draw segment backgrounds
-    for (const segment of segments) {
-      const x = (segment.start / duration) * width;
-      const segWidth = ((segment.end - segment.start) / duration) * width;
-      ctx.fillStyle = SEGMENT_COLORS[segment.label] + '20'; // 20% opacity
-      ctx.fillRect(x, 0, segWidth, height);
-    }
-
-    // Draw waveform bars
-    for (let i = 0; i < waveformData.length; i++) {
-      const x = i * barWidth;
-      const barHeight = waveformData[i] * height * 0.8;
-
-      // Color based on playhead position
-      const isPast = x < playheadX;
-      ctx.fillStyle = isPast ? '#f97316' : '#64748b';
-
-      // Draw mirrored bar
-      ctx.fillRect(x, (height - barHeight) / 2, barWidth - 1, barHeight);
-    }
-
-    // Draw beat markers
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    for (const beat of beats) {
-      const x = (beat / duration) * width;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-
-    // Draw playhead
+    // Segment boundaries (hairlines) and labels
+    ctx.font = `500 9px ${cssVar('--f-mono')}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     if (duration > 0) {
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(playheadX, 0);
-      ctx.lineTo(playheadX, height);
-      ctx.stroke();
-
-      // Playhead glow
-      ctx.shadowColor = '#f97316';
-      ctx.shadowBlur = 10;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
+      for (const segment of segments) {
+        const x = Math.round((segment.start / duration) * width) + 0.5;
+        const segWidth = ((segment.end - segment.start) / duration) * width;
+        if (segment.start > 0) {
+          ctx.strokeStyle = line;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, bottom);
+          ctx.stroke();
+        }
+        const text = segment.label.toUpperCase();
+        if (ctx.measureText(text).width + 10 < segWidth) {
+          ctx.fillStyle = muted;
+          ctx.fillText(text, x + 5, 10);
+        }
+      }
     }
 
-    // Draw segment labels
-    ctx.font = '10px system-ui';
-    ctx.textAlign = 'center';
-    for (const segment of segments) {
-      const x = ((segment.start + segment.end) / 2 / duration) * width;
-      ctx.fillStyle = SEGMENT_COLORS[segment.label];
-      ctx.fillText(segment.label.toUpperCase(), x, 12);
+    // Waveform as a tick strip: 3px ticks, 2px gaps. Played ticks are ink, the rest faint.
+    const pitch = 5;
+    const tickCount = Math.max(1, Math.floor(width / pitch));
+    for (let i = 0; i < tickCount; i++) {
+      const from = Math.floor((i / tickCount) * waveformData.length);
+      const to = Math.max(from + 1, Math.floor(((i + 1) / tickCount) * waveformData.length));
+      let peak = 0;
+      for (let j = from; j < to; j++) peak = Math.max(peak, waveformData[j] || 0);
+
+      const x = i * pitch;
+      const barHeight = Math.max(2, peak * maxBar);
+      ctx.fillStyle = x + 1.5 < playheadX ? ink : faint;
+      ctx.fillRect(x, mid - barHeight / 2, 3, barHeight);
+    }
+
+    // Beats: a row of small dots at the foot
+    if (duration > 0) {
+      ctx.fillStyle = faint;
+      for (const beat of beats) {
+        const x = (beat / duration) * width;
+        ctx.beginPath();
+        ctx.arc(x, height - 5, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // "Now" line: 1px ink with a lime dot at its foot
+      const px = Math.round(playheadX) + 0.5;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, 14);
+      ctx.lineTo(px, height - 5);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(px, height - 5, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = cssVar('--lime');
+      ctx.fill();
+      ctx.strokeStyle = cssVar('--lime-deep');
+      ctx.stroke();
     }
   }, [waveformData, currentTime, duration, segments, beats]);
 
@@ -172,30 +179,25 @@ export function WaveformDisplay({ segments = [], beats = [], onSeek }: WaveformD
 
   if (!audioBuffer) {
     return (
-      <div className="h-32 bg-muted/50 rounded-lg flex items-center justify-center">
-        <p className="text-muted-foreground">No audio loaded</p>
+      <div className="h-32 well flex items-center justify-center">
+        <p className="label">No audio loaded</p>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative h-32 bg-muted/20 rounded-lg overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full cursor-pointer"
-        onClick={handleClick}
-      />
-
-      {/* Time display */}
-      <div className="absolute bottom-2 left-2 text-xs text-muted-foreground font-mono">
-        {formatTime(currentTime)} / {formatTime(duration)}
+    <div>
+      <div ref={containerRef} className="relative h-32">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full cursor-pointer"
+          onClick={handleClick}
+        />
+      </div>
+      <div className="flex justify-between mt-2">
+        <span className="tip key">{formatTime(currentTime)}</span>
+        <span className="label self-center">{formatTime(duration)}</span>
       </div>
     </div>
   );
-}
-
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }

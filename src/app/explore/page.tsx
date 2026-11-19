@@ -25,169 +25,165 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => router.push('/')}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold">3D Similarity Explorer</h1>
-            <p className="text-muted-foreground">
-              {songs.length} songs in your library
-            </p>
+    <div>
+      {/* Header */}
+      <div className="flex items-start gap-3 px-1 pt-2 pb-6">
+        <button
+          onClick={() => router.push('/')}
+          className="btn btn-icon"
+          aria-label="Back to library"
+          title="Back to library"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div>
+          <div className="label mb-2 mt-1">
+            {songs.length} {songs.length === 1 ? 'song' : 'songs'} in your library
           </div>
+          <h1 className="!text-[28px]">3D similarity explorer</h1>
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[1fr_300px]">
+        {/* 3D Graph */}
+        <div className="space-y-3 min-w-0">
+          <SimilarityGraph3D
+            songs={songs}
+            selectedSongId={selectedSongId}
+            dimension={graphFilters.dimension}
+            threshold={graphFilters.threshold}
+            onSelectSong={selectSong}
+          />
+
+          {/* Controls */}
+          <Card>
+            <div className="flex flex-wrap gap-x-8 gap-y-5">
+              {/* Dimension filter */}
+              <div className="min-w-0">
+                <div className="label mb-3">Similarity dimension</div>
+                <Tabs value={graphFilters.dimension} onValueChange={handleDimensionChange}>
+                  <TabsList>
+                    <TabsTrigger value="overall">Overall</TabsTrigger>
+                    <TabsTrigger value="tonal">Tonal</TabsTrigger>
+                    <TabsTrigger value="rhythm">Rhythm</TabsTrigger>
+                    <TabsTrigger value="timbre">Timbre</TabsTrigger>
+                    <TabsTrigger value="dynamics">Energy</TabsTrigger>
+                    <TabsTrigger value="structure">Structure</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* Threshold slider */}
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-baseline justify-between mb-3">
+                  <span className="label">Similarity threshold</span>
+                  <span className="mono text-ink">{Math.round(graphFilters.threshold * 100)}%</span>
+                </div>
+                <Slider
+                  value={[graphFilters.threshold]}
+                  onValueChange={handleThresholdChange}
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  className="w-full py-2"
+                  aria-label="Similarity threshold"
+                />
+                <div className="flex justify-between mt-2">
+                  <span className="label !text-[9px]">More links</span>
+                  <span className="label !text-[9px]">Fewer links</span>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-          {/* 3D Graph */}
-          <div className="space-y-4">
-            <SimilarityGraph3D
-              songs={songs}
-              selectedSongId={selectedSongId}
-              dimension={graphFilters.dimension}
-              threshold={graphFilters.threshold}
-              onSelectSong={selectSong}
-            />
+        {/* Sidebar */}
+        <div className="space-y-3 min-w-0">
+          {/* Selected song details */}
+          {selectedSong ? (
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <span className="label">Selected song</span>
+                <span className="status ok">Selected</span>
+              </div>
+              <h2 className="truncate mb-2.5">{selectedSong.metadata.filename}</h2>
+              <FeatureBadges song={selectedSong} size="sm" />
 
-            {/* Controls */}
-            <Card className="p-4">
-              <div className="flex flex-wrap gap-6">
-                {/* Dimension filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Similarity Dimension</label>
-                  <Tabs
-                    value={graphFilters.dimension}
-                    onValueChange={handleDimensionChange}
-                  >
-                    <TabsList className="grid grid-cols-3 lg:grid-cols-6">
-                      <TabsTrigger value="overall">Overall</TabsTrigger>
-                      <TabsTrigger value="tonal">Tonal</TabsTrigger>
-                      <TabsTrigger value="rhythm">Rhythm</TabsTrigger>
-                      <TabsTrigger value="timbre">Timbre</TabsTrigger>
-                      <TabsTrigger value="dynamics">Energy</TabsTrigger>
-                      <TabsTrigger value="structure">Structure</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-
-                {/* Threshold slider */}
-                <div className="space-y-2 flex-1 min-w-[200px]">
-                  <label className="text-sm font-medium">
-                    Similarity Threshold: {Math.round(graphFilters.threshold * 100)}%
-                  </label>
-                  <Slider
-                    value={[graphFilters.threshold]}
-                    onValueChange={handleThresholdChange}
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Show more links</span>
-                    <span>Show fewer links</span>
-                  </div>
-                </div>
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  onClick={() => router.push(`/analyze/${selectedSong.id}`)}
+                  className="btn-primary key w-full"
+                >
+                  View full analysis
+                </button>
+                <button onClick={() => selectSong(null)} className="btn w-full">
+                  Deselect
+                </button>
               </div>
             </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-4">
-            {/* Selected song details */}
-            {selectedSong ? (
-              <Card className="p-4">
-                <h2 className="font-semibold mb-2">Selected Song</h2>
-                <h3 className="font-medium truncate mb-2">{selectedSong.metadata.filename}</h3>
-                <FeatureBadges song={selectedSong} size="sm" />
-
-                <div className="mt-4 space-y-2">
-                  <button
-                    onClick={() => router.push(`/analyze/${selectedSong.id}`)}
-                    className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
-                  >
-                    View Full Analysis
-                  </button>
-                  <button
-                    onClick={() => selectSong(null)}
-                    className="w-full px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors text-sm"
-                  >
-                    Deselect
-                  </button>
-                </div>
-              </Card>
-            ) : (
-              <Card className="p-4">
-                <h2 className="font-semibold mb-2">Instructions</h2>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>• Click a node to select a song</li>
-                  <li>• Drag to rotate the view</li>
-                  <li>• Scroll to zoom in/out</li>
-                  <li>• Links show similarity between songs</li>
-                  <li>• Node color = musical key</li>
-                  <li>• Node size = energy level</li>
-                </ul>
-              </Card>
-            )}
-
-            {/* Song list */}
-            <Card className="p-4">
-              <h2 className="font-semibold mb-3">All Songs</h2>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {songs.map((song) => (
-                  <button
-                    key={song.id}
-                    onClick={() => selectSong(song.id)}
-                    className={`w-full text-left p-2 rounded-lg transition-colors text-sm ${
-                      song.id === selectedSongId
-                        ? 'bg-primary/20 border border-primary'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    <p className="font-medium truncate">{song.metadata.filename}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {song.features.key.key} {song.features.key.scale} |{' '}
-                      {Math.round(song.features.tempo.bpm)} BPM
-                    </p>
-                  </button>
-                ))}
-              </div>
+          ) : (
+            <Card>
+              <div className="label mb-1">How to use</div>
+              <dl className="rows">
+                <div><dt>Click a node</dt><dd>select</dd></div>
+                <div><dt>Drag</dt><dd>rotate</dd></div>
+                <div><dt>Scroll</dt><dd>zoom</dd></div>
+                <div><dt>Link</dt><dd>similar pair</dd></div>
+                <div><dt>Node size</dt><dd>energy</dd></div>
+              </dl>
             </Card>
+          )}
 
-            {/* Dimension explanation */}
-            <Card className="p-4">
-              <h2 className="font-semibold mb-3">Dimension Guide</h2>
-              <div className="text-xs text-muted-foreground space-y-2">
-                <p>
-                  <strong className="text-foreground">Tonal:</strong> Key, chord progressions,
-                  harmonic content
-                </p>
-                <p>
-                  <strong className="text-foreground">Rhythm:</strong> Tempo, beat patterns,
-                  groove
-                </p>
-                <p>
-                  <strong className="text-foreground">Timbre:</strong> Sonic texture, brightness,
-                  instrument qualities
-                </p>
-                <p>
-                  <strong className="text-foreground">Energy:</strong> Loudness, dynamics,
-                  intensity
-                </p>
-                <p>
-                  <strong className="text-foreground">Structure:</strong> Song sections,
-                  arrangement patterns
-                </p>
-              </div>
-            </Card>
-          </div>
+          {/* Song list */}
+          <Card>
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="label">All songs</span>
+              <span className="label">{songs.length}</span>
+            </div>
+            <div className="-mx-1.5 space-y-0.5 max-h-[400px] overflow-y-auto p-1.5">
+              {songs.map((song) => (
+                <button
+                  key={song.id}
+                  onClick={() => selectSong(song.id)}
+                  aria-current={song.id === selectedSongId ? 'true' : undefined}
+                  className="nav-row"
+                >
+                  <span className="font-medium text-ink truncate w-full">{song.metadata.filename}</span>
+                  <span className="mono text-[11px] text-muted-foreground">
+                    {song.features.key.key} {song.features.key.scale} ·{' '}
+                    {Math.round(song.features.tempo.bpm)} BPM
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {/* Dimension explanation */}
+          <Card>
+            <div className="label mb-3">Dimension guide</div>
+            <div className="text-[12px] space-y-2.5">
+              <p>
+                <span className="text-ink font-medium">Tonal.</span> Key, chord progressions,
+                harmonic content
+              </p>
+              <p>
+                <span className="text-ink font-medium">Rhythm.</span> Tempo, beat patterns, groove
+              </p>
+              <p>
+                <span className="text-ink font-medium">Timbre.</span> Sonic texture, brightness,
+                instrument qualities
+              </p>
+              <p>
+                <span className="text-ink font-medium">Energy.</span> Loudness, dynamics, intensity
+              </p>
+              <p>
+                <span className="text-ink font-medium">Structure.</span> Song sections, arrangement
+                patterns
+              </p>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

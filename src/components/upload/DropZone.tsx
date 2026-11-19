@@ -51,23 +51,27 @@ export function DropZone({ onFileSelect, isAnalyzing, progress, progressMessage 
   );
 
   if (isAnalyzing) {
+    const pct = Math.round((progress || 0) * 100);
     return (
-      <div className="surface-card p-6 flex flex-col gap-5">
-        <div className="flex items-baseline justify-between">
-          <span className="label-mono">02 / Analyzing</span>
-          <span className="label-mono">{Math.round((progress || 0) * 100)}%</span>
+      <div className="card flex flex-col gap-5">
+        <div className="flex items-center justify-between">
+          <span className="label">02 / Analyzing</span>
+          <span className="status ok">Working</span>
         </div>
-        <div className="flex flex-col gap-1">
-          <h3 className="text-[18px] font-bold tracking-tight">Extracting musical DNA</h3>
-          <p className="text-[13px] text-[color:var(--muted-foreground)]">
-            {progressMessage || 'Analyzing audio…'}
-          </p>
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h2>Extracting musical DNA</h2>
+            <p className="text-[13px] text-muted-foreground">
+              {progressMessage || 'Analyzing audio…'}
+            </p>
+          </div>
+          <div className="stat-sm tabular-nums">
+            {pct}
+            <span className="text-[15px] text-muted-foreground ml-0.5">%</span>
+          </div>
         </div>
-        <div className="h-[3px] bg-[color:var(--surface-raised)] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[color:var(--accent)] transition-[width] duration-200"
-            style={{ width: `${(progress || 0) * 100}%` }}
-          />
+        <div className="track">
+          <div className="transition-[width] duration-200" style={{ width: `${pct}%` }} />
         </div>
       </div>
     );
@@ -75,10 +79,7 @@ export function DropZone({ onFileSelect, isAnalyzing, progress, progressMessage 
 
   return (
     <div
-      className={cn(
-        'surface-card p-6 flex flex-col gap-5 cursor-pointer transition-colors',
-        isDragging && 'border-[color:var(--accent)] bg-[color:var(--accent-light)]'
-      )}
+      className="card flex flex-col gap-5 cursor-pointer"
       onDrop={handleDrop}
       onDragOver={(e) => {
         e.preventDefault();
@@ -102,38 +103,48 @@ export function DropZone({ onFileSelect, isAnalyzing, progress, progressMessage 
       />
 
       <div className="flex items-baseline justify-between">
-        <span className="label-mono">02 / Upload</span>
-        <span className="label-mono">max 100MB</span>
+        <span className="label">02 / Upload</span>
+        <span className="label">max 100MB</span>
       </div>
 
       <div className="flex flex-col gap-1">
-        <h3 className="text-[18px] font-bold tracking-tight">
-          {isDragging ? 'Drop to analyze' : 'Upload a file'}
-        </h3>
-        <p className="text-[13px] text-[color:var(--muted-foreground)]">
+        <h2>{isDragging ? 'Drop to analyze' : 'Upload a file'}</h2>
+        <p className="text-[13px] text-muted-foreground">
           Drag &amp; drop an audio file, or click to browse. MP3, WAV, OGG, FLAC, M4A.
         </p>
       </div>
 
-      <div className="flex items-center justify-center py-6 border border-dashed border-[color:var(--border)] rounded-md bg-[color:var(--surface)]">
-        <svg
-          className="w-8 h-8 text-[color:var(--muted-strong)]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
+      {/* Drop target: dashed while waiting, a raised white slab once a file is over it */}
+      <div
+        className={cn(
+          'flex flex-1 min-h-[120px] items-center justify-center rounded-[12px] transition-all',
+          isDragging
+            ? 'bg-white shadow-[var(--sh-raised)] border border-transparent'
+            : 'border border-dashed border-[#cfd1d5]'
+        )}
+      >
+        <div className="tile">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-          />
-        </svg>
+            aria-hidden
+          >
+            <path d="M9 18V5l11-2v13" />
+            <circle cx="6.5" cy="18" r="2.5" />
+            <circle cx="17.5" cy="16" r="2.5" />
+          </svg>
+        </div>
       </div>
 
       <button
         type="button"
-        className="w-full px-4 py-2.5 bg-white border border-[color:var(--border)] text-[color:var(--foreground)] rounded-md text-[14px] font-medium hover:bg-[color:var(--surface)] transition-colors"
+        className="btn w-full"
         onClick={(e) => {
           e.stopPropagation();
           document.getElementById('file-input')?.click();
@@ -142,11 +153,7 @@ export function DropZone({ onFileSelect, isAnalyzing, progress, progressMessage 
         Browse files
       </button>
 
-      {error && (
-        <p className="text-[13px] text-[color:var(--destructive)] bg-[color:var(--destructive)]/10 px-3 py-2 rounded-md">
-          {error}
-        </p>
-      )}
+      {error && <p className="error-line">{error}</p>}
     </div>
   );
 }

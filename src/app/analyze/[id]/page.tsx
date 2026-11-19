@@ -56,238 +56,218 @@ export default function AnalyzePage() {
 
   if (!song) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="label">Loading…</p>
       </div>
     );
   }
 
+  const segmentCounts = Object.entries(
+    song.timeline.segments.reduce(
+      (acc, seg) => {
+        acc[seg.label] = (acc[seg.label] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    )
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => router.push('/')}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{song.metadata.filename}</h1>
-            <FeatureBadges song={song} />
-          </div>
-          <PlaybackControls />
+    <div className="max-w-[1100px] mx-auto">
+      {/* Header */}
+      <div className="flex items-start gap-3 px-1 pt-2 pb-6">
+        <button
+          onClick={() => router.push('/')}
+          className="btn btn-icon"
+          aria-label="Back to library"
+          title="Back to library"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="label mb-2 mt-1">Analysis</div>
+          <h1 className="!text-[28px] truncate mb-3">{song.metadata.filename}</h1>
+          <FeatureBadges song={song} />
         </div>
-
-        {/* Waveform */}
-        <Card className="p-4 mb-8">
-          <WaveformDisplay
-            segments={song.timeline.segments}
-            beats={song.features.beats.slice(0, 200)}
-          />
-        </Card>
-
-        {/* Visualization Tabs */}
-        <Tabs defaultValue="structure" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
-            <TabsTrigger value="structure">Structure</TabsTrigger>
-            <TabsTrigger value="energy">Energy Arc</TabsTrigger>
-            <TabsTrigger value="harmonic">Harmonic DNA</TabsTrigger>
-            <TabsTrigger value="details">Details</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="structure">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Song Structure</h2>
-              <p className="text-muted-foreground mb-4">
-                Detected sections based on energy and harmonic changes
-              </p>
-              <StructureTimeline
-                segments={song.timeline.segments}
-                duration={song.metadata.duration}
-                beats={song.features.beats}
-              />
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="energy">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Energy Arc</h2>
-              <p className="text-muted-foreground mb-4">
-                The emotional intensity journey through the track
-              </p>
-              <EnergyArc
-                energyEnvelope={song.timeline.energyEnvelope}
-                segments={song.timeline.segments}
-                duration={song.metadata.duration}
-              />
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="harmonic">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Harmonic DNA</h2>
-              <p className="text-muted-foreground mb-4">
-                Pitch class distribution over time (chromagram)
-              </p>
-              <HarmonicDNA
-                chromagram={song.timeline.chromagram}
-                keyInfo={song.features.key}
-                chords={song.features.chords}
-                duration={song.metadata.duration}
-              />
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="details">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Technical Details</h2>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Tempo & Rhythm */}
-                <div className="space-y-2">
-                  <h3 className="font-medium">Tempo & Rhythm</h3>
-                  <div className="text-sm space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">BPM:</span>{' '}
-                      {Math.round(song.features.tempo.bpm)}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Confidence:</span>{' '}
-                      {Math.round(song.features.tempo.confidence * 100)}%
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Beat Count:</span>{' '}
-                      {song.features.beats.length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Key & Harmony */}
-                <div className="space-y-2">
-                  <h3 className="font-medium">Key & Harmony</h3>
-                  <div className="text-sm space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">Key:</span>{' '}
-                      {song.features.key.key} {song.features.key.scale}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Confidence:</span>{' '}
-                      {Math.round(song.features.key.strength * 100)}%
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Chord Changes:</span>{' '}
-                      {song.features.chords.length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Loudness */}
-                <div className="space-y-2">
-                  <h3 className="font-medium">Loudness</h3>
-                  <div className="text-sm space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">Integrated:</span>{' '}
-                      {song.features.loudness.integrated.toFixed(1)} dB
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Peak:</span>{' '}
-                      {song.features.loudness.peak.toFixed(1)} dB
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Range:</span>{' '}
-                      {song.features.loudness.range.toFixed(1)} LU
-                    </p>
-                  </div>
-                </div>
-
-                {/* Spectral */}
-                <div className="space-y-2">
-                  <h3 className="font-medium">Spectral Features</h3>
-                  <div className="text-sm space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">Brightness:</span>{' '}
-                      {song.features.spectral.centroidMean.toFixed(0)} Hz
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Flatness:</span>{' '}
-                      {(song.features.spectral.flatnessMean * 100).toFixed(1)}%
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Rolloff:</span>{' '}
-                      {song.features.spectral.rolloffMean.toFixed(0)} Hz
-                    </p>
-                  </div>
-                </div>
-
-                {/* Metadata */}
-                <div className="space-y-2">
-                  <h3 className="font-medium">File Info</h3>
-                  <div className="text-sm space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">Duration:</span>{' '}
-                      {formatDuration(song.metadata.duration)}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Sample Rate:</span>{' '}
-                      {song.metadata.sampleRate} Hz
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">File Size:</span>{' '}
-                      {formatFileSize(song.metadata.fileSize)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Segments */}
-                <div className="space-y-2">
-                  <h3 className="font-medium">Structure Summary</h3>
-                  <div className="text-sm space-y-1">
-                    {Object.entries(
-                      song.timeline.segments.reduce(
-                        (acc, seg) => {
-                          acc[seg.label] = (acc[seg.label] || 0) + 1;
-                          return acc;
-                        },
-                        {} as Record<string, number>
-                      )
-                    ).map(([label, count]) => (
-                      <p key={label}>
-                        <span className="text-muted-foreground capitalize">{label}:</span> {count}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Navigation to other songs */}
-        {songs.length > 1 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">Other Songs</h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              {songs
-                .filter((s) => s.id !== id)
-                .slice(0, 3)
-                .map((s) => (
-                  <Card
-                    key={s.id}
-                    className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => router.push(`/analyze/${s.id}`)}
-                  >
-                    <h3 className="font-medium mb-2 truncate">{s.metadata.filename}</h3>
-                    <FeatureBadges song={s} size="sm" />
-                  </Card>
-                ))}
-            </div>
-          </div>
-        )}
+        <PlaybackControls />
       </div>
+
+      {/* Waveform */}
+      <Card className="mb-3">
+        <div className="flex items-baseline justify-between mb-3">
+          <span className="label">Waveform</span>
+          <span className="label">{isLoading ? 'Loading audio…' : 'Click to seek'}</span>
+        </div>
+        <WaveformDisplay
+          segments={song.timeline.segments}
+          beats={song.features.beats.slice(0, 200)}
+        />
+      </Card>
+
+      {/* Visualization Tabs */}
+      <Tabs defaultValue="structure" className="gap-3">
+        <TabsList className="my-2">
+          <TabsTrigger value="structure">Structure</TabsTrigger>
+          <TabsTrigger value="energy">Energy arc</TabsTrigger>
+          <TabsTrigger value="harmonic">Harmonic DNA</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="structure">
+          <Card>
+            <h2 className="mb-1">Song structure</h2>
+            <p className="text-[13px] text-muted-foreground">
+              Detected sections based on energy and harmonic changes
+            </p>
+            <StructureTimeline
+              segments={song.timeline.segments}
+              duration={song.metadata.duration}
+              beats={song.features.beats}
+            />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="energy">
+          <Card>
+            <h2 className="mb-1">Energy arc</h2>
+            <p className="text-[13px] text-muted-foreground mb-4">
+              The emotional intensity journey through the track
+            </p>
+            <EnergyArc
+              energyEnvelope={song.timeline.energyEnvelope}
+              segments={song.timeline.segments}
+              duration={song.metadata.duration}
+            />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="harmonic">
+          <Card>
+            <h2 className="mb-1">Harmonic DNA</h2>
+            <p className="text-[13px] text-muted-foreground mb-4">
+              Pitch class distribution over time (chromagram)
+            </p>
+            <HarmonicDNA
+              chromagram={song.timeline.chromagram}
+              keyInfo={song.features.key}
+              chords={song.features.chords}
+              duration={song.metadata.duration}
+            />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="details">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <DetailCard
+              label="Tempo & rhythm"
+              stat={Math.round(song.features.tempo.bpm)}
+              unit="BPM"
+              rows={[
+                ['Confidence', `${Math.round(song.features.tempo.confidence * 100)}%`],
+                ['Beat count', song.features.beats.length],
+              ]}
+            />
+            <DetailCard
+              label="Key & harmony"
+              stat={song.features.key.key}
+              unit={song.features.key.scale}
+              rows={[
+                ['Confidence', `${Math.round(song.features.key.strength * 100)}%`],
+                ['Chord changes', song.features.chords.length],
+              ]}
+            />
+            <DetailCard
+              label="Loudness"
+              stat={song.features.loudness.integrated.toFixed(1)}
+              unit="dB integrated"
+              rows={[
+                ['Peak', `${song.features.loudness.peak.toFixed(1)} dB`],
+                ['Range', `${song.features.loudness.range.toFixed(1)} LU`],
+              ]}
+            />
+            <DetailCard
+              label="Spectral features"
+              stat={song.features.spectral.centroidMean.toFixed(0)}
+              unit="Hz brightness"
+              rows={[
+                ['Flatness', `${(song.features.spectral.flatnessMean * 100).toFixed(1)}%`],
+                ['Rolloff', `${song.features.spectral.rolloffMean.toFixed(0)} Hz`],
+              ]}
+            />
+            <DetailCard
+              label="File info"
+              stat={formatDuration(song.metadata.duration)}
+              unit="duration"
+              rows={[
+                ['Sample rate', `${song.metadata.sampleRate} Hz`],
+                ['File size', formatFileSize(song.metadata.fileSize)],
+              ]}
+            />
+            <DetailCard
+              label="Structure summary"
+              stat={song.timeline.segments.length}
+              unit="sections"
+              rows={segmentCounts.map(([label, count]) => [label, count])}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Navigation to other songs */}
+      {songs.length > 1 && (
+        <div className="mt-8">
+          <h2 className="px-1 mb-3">Other songs</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            {songs
+              .filter((s) => s.id !== id)
+              .slice(0, 3)
+              .map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="card text-left transition-transform hover:-translate-y-px"
+                  onClick={() => router.push(`/analyze/${s.id}`)}
+                >
+                  <h3 className="mb-2.5 truncate">{s.metadata.filename}</h3>
+                  <FeatureBadges song={s} size="sm" />
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function DetailCard({
+  label,
+  stat,
+  unit,
+  rows,
+}: {
+  label: string;
+  stat: string | number;
+  unit: string;
+  rows: [string, string | number][];
+}) {
+  return (
+    <Card>
+      <div className="label mb-4">{label}</div>
+      <div className="flex items-baseline gap-2 mb-3">
+        <span className="stat-sm">{stat}</span>
+        <span className="text-[13px] text-muted-foreground">{unit}</span>
+      </div>
+      <dl className="rows">
+        {rows.map(([name, value]) => (
+          <div key={name}>
+            <dt className="capitalize">{name}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
   );
 }
 

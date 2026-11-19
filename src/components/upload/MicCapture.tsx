@@ -36,37 +36,39 @@ export function MicCapture({ onFileSelect, disabled, maxDurationMs = MAX_MS }: M
   const sourceLabel = source === 'tab' ? 'Capturing tab audio' : 'Capturing mic input';
 
   return (
-    <div className="surface-card p-6 flex flex-col gap-5">
-      <div className="flex items-baseline justify-between">
-        <span className="label-mono">01 / Capture</span>
-        <span className="label-mono">max {maxLabel}</span>
+    <div className="card flex flex-col gap-5">
+      <div className="flex items-center justify-between min-h-[22px]">
+        <span className="label">01 / Capture</span>
+        {isRecording ? (
+          <span className="status ok">Recording</span>
+        ) : (
+          <span className="label">max {maxLabel}</span>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
-        <h3 className="text-[18px] font-bold tracking-tight">
-          {isRecording ? sourceLabel : 'Capture audio'}
-        </h3>
-        <p className="text-[13px] text-[color:var(--muted-foreground)]">
+        <h2>{isRecording ? sourceLabel : 'Capture audio'}</h2>
+        <p className="text-[13px] text-muted-foreground">
           {isRecording
             ? 'Recording in progress. Stop anytime to analyze what you have.'
             : 'Pipe a tab’s audio into the analyzer, or use your mic.'}
         </p>
       </div>
 
-      {/* Level meter */}
-      <div className="flex items-end gap-[2px] h-12 px-1">
+      {/* Level meter: a tick strip */}
+      <div className="flex items-end justify-between h-12 px-1">
         {Array.from({ length: LEVEL_BARS }).map((_, i) => {
           const ratio = (i + 1) / LEVEL_BARS;
           const active = isRecording && level >= ratio * 0.7;
           const baseHeight = isRecording
             ? Math.max(10, Math.min(100, level * 100 * (0.5 + (i / LEVEL_BARS) * 0.7)))
-            : 12;
+            : 28;
           return (
             <div
               key={i}
               className={cn(
-                'flex-1 rounded-[1px] transition-all duration-75',
-                active ? 'bg-[color:var(--accent)]' : 'bg-[color:var(--surface-raised)]'
+                'w-[3px] rounded-[1px] transition-all duration-75',
+                active ? 'bg-ink' : 'bg-faint/50'
               )}
               style={{ height: `${baseHeight}%` }}
             />
@@ -76,16 +78,13 @@ export function MicCapture({ onFileSelect, disabled, maxDurationMs = MAX_MS }: M
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
-        <span className="font-mono text-[11px] text-[color:var(--muted-strong)] tabular-nums w-10">
+        <span className="mono text-[11px] text-muted-foreground tabular-nums w-10">
           {formatElapsed(elapsedMs)}
         </span>
-        <div className="flex-1 h-[3px] bg-[color:var(--surface-raised)] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[color:var(--accent)] transition-[width] duration-100"
-            style={{ width: `${progress * 100}%` }}
-          />
+        <div className="track flex-1">
+          <div className="transition-[width] duration-100" style={{ width: `${progress * 100}%` }} />
         </div>
-        <span className="font-mono text-[11px] text-[color:var(--muted-strong)] tabular-nums w-10 text-right">
+        <span className="mono text-[11px] text-muted-foreground tabular-nums w-10 text-right">
           {maxLabel}
         </span>
       </div>
@@ -97,7 +96,7 @@ export function MicCapture({ onFileSelect, disabled, maxDurationMs = MAX_MS }: M
             type="button"
             onClick={() => start('tab')}
             disabled={disabled}
-            className="px-4 py-2.5 bg-[color:var(--accent-deep)] text-white rounded-md text-[14px] font-medium hover:bg-[color:var(--accent-deep-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary key"
           >
             Share a tab
           </button>
@@ -105,35 +104,41 @@ export function MicCapture({ onFileSelect, disabled, maxDurationMs = MAX_MS }: M
             type="button"
             onClick={() => start('mic')}
             disabled={disabled}
-            className="px-4 py-2.5 bg-white border border-[color:var(--border)] text-[color:var(--foreground)] rounded-md text-[14px] font-medium hover:bg-[color:var(--surface)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn"
           >
             Use microphone
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={stop}
-          className="w-full px-4 py-2.5 bg-[color:var(--foreground)] text-white rounded-md text-[14px] font-medium hover:opacity-90 transition-opacity"
-        >
+        <button type="button" onClick={stop} className="btn-primary key w-full">
           Stop &amp; analyze
         </button>
       )}
 
       {/* Spotify note */}
-      <div className="bg-[color:var(--surface)] border border-[color:var(--border)] rounded-md p-3">
-        <div className="label-mono mb-1.5">Heads up</div>
-        <p className="text-[13px] text-[color:var(--muted-foreground)] leading-relaxed">
-          Spotify is DRM-protected — Chrome mutes the audio in tab captures of its web player.
-          Use <span className="text-[color:var(--foreground)] font-medium">YouTube</span> (or any non-DRM source) for tab sharing.
+      <div className="callout">
+        <div className="tile key">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            aria-hidden
+          >
+            <path d="M12 11v6M12 7.5v.01" />
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+        </div>
+        <p className="text-[13px] leading-relaxed">
+          Spotify is DRM-protected, so Chrome mutes the audio in tab captures of its web player.
+          Use <span className="text-ink font-medium">YouTube</span> (or any non-DRM source) for tab sharing.
         </p>
       </div>
 
-      {error && (
-        <p className="text-[13px] text-[color:var(--destructive)] bg-[color:var(--destructive)]/10 px-3 py-2 rounded-md">
-          {error}
-        </p>
-      )}
+      {error && <p className="error-line">{error}</p>}
     </div>
   );
 }
